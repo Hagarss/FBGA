@@ -83,6 +83,8 @@ The system was developed using Verilog HDL and implemented on a Xilinx FPGA Gene
 
 ## Results
 ![image](https://github.com/user-attachments/assets/dcf5d178-1f6c-4f5a-9266-60b3de2bc7fb)
+![image](https://github.com/user-attachments/assets/dd52462f-c7c9-4456-86a2-9deef4b5c006)
+
 
 *Comparison of stego images with different embedding rates*
 | PSNR    | 1 bit | 2 bits | 3 bits | 4 bits | 5 bits | 6 bits |
