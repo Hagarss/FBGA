@@ -1,0 +1,68 @@
+### Module 6: Threshold Module
+
+**Function:**
+
+* Calculate threshold value = (sum of all pixel magnitudes) / (number of pixels) — you provide these as inputs.
+* Compare each pixel's edge magnitude to the threshold.
+* If pixel value > threshold → flag edge (output 1), else 0.
+
+---
+
+### Verilog Code (Threshold Detector)
+
+```verilog
+module threshold #(
+    parameter PIXEL_WIDTH = 11  // Width of pixel magnitude input
+)(
+    input wire clk,
+    input wire rst,
+    input wire start,                 // Start processing signal
+    input wire [PIXEL_WIDTH-1:0] pixel_in,    // Current pixel edge magnitude
+    input wire [PIXEL_WIDTH-1:0] threshold_val, // Pre-calculated threshold value
+    output reg edge_flag,             // 1 if pixel > threshold, else 0
+    output reg done                   // done flag for synchronization (optional)
+);
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            edge_flag <= 0;
+            done <= 0;
+        end else if (start) begin
+            if (pixel_in > threshold_val)
+                edge_flag <= 1;
+            else
+                edge_flag <= 0;
+
+            done <= 1;  // done signal can be used for sync or pipelining
+        end else begin
+            edge_flag <= 0;
+            done <= 0;
+        end
+    end
+
+endmodule
+```
+
+---
+
+### Notes:
+
+* **Inputs:**
+
+  * `pixel_in`: magnitude of the current pixel from the SQRT module (gradient magnitude).
+  * `threshold_val`: threshold calculated externally by dividing total pixel sum by number of pixels (you can calculate this outside the module or in a controller module).
+  * `start`: signal to validate the current pixel input and produce output.
+* **Outputs:**
+
+  * `edge_flag`: 1 if pixel is an edge, 0 otherwise.
+  * `done`: signals when comparison is done (optional, useful for pipeline synchronization).
+
+---
+
+### How to Use:
+
+1. Precompute the threshold value (sum of pixel magnitudes / number of pixels) in your controller or software.
+2. Stream pixel magnitudes into this module one by one with `start` asserted.
+3. Read the `edge_flag` to identify edges.
+
+---
