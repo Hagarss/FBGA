@@ -1,0 +1,41 @@
+
+### Module 1: Block Memory Generator (BRAM)
+
+This module is used to store images (cover and message) in block RAMs on the FPGA. Images are preprocessed and converted to `.coe` files using MATLAB, then loaded into the FPGA using BRAM IPs.
+
+* **Cover Image:** 256×256 RGB
+  → Requires **44 BRAM blocks** (each 36Kb)
+  → Address width: **16 bits**
+
+* **Message Images:**
+
+  * 32×32 RGB → **1 BRAM block**, **10-bit address**
+  * 64×64 RGB → **3 BRAM blocks**, **12-bit address**
+
+* Each pixel is 24 bits (8 bits per RGB channel) and is read **one pixel per clock cycle**.
+
+> The BRAM modules were instantiated using Xilinx Vivado IP Catalog and wrapped in Verilog modules for integration. All BRAMs are read-only in this context, with `.coe` files loaded during synthesis.
+
+Example wrapper for the 256×256 cover image:
+
+```verilog
+module cover_bram_wrapper (
+    input wire clk,
+    input wire [15:0] addr,
+    output wire [23:0] pixel_data
+);
+
+cover_bram cover_mem (
+    .clka(clk),
+    .addra(addr),
+    .douta(pixel_data),
+    .ena(1'b1),
+    .wea(1'b0),
+    .dina(24'b0)
+);
+
+endmodule
+```
+
+---
+
