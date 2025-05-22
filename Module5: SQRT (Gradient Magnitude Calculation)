@@ -1,0 +1,83 @@
+### Module: SQRT (Gradient Magnitude Calculation)
+
+### Description
+
+This module calculates the gradient magnitude $G_r$ for each pixel from the Sobel gradients `Gx` and `Gy`:
+
+$$
+G_r = \sqrt{G_x^2 + G_y^2}
+$$
+
+This value represents the strength of the edge at that pixel.
+
+### Function
+
+* **Inputs**:
+
+  * `Gx`: Gradient in the x-direction (signed integer)
+  * `Gy`: Gradient in the y-direction (signed integer)
+* **Outputs**:
+
+  * `Gr`: Gradient magnitude (unsigned integer)
+
+### Note
+
+Since square root calculations can be expensive, you may approximate the square root with a suitable algorithm or use an IP core if available.
+
+---
+
+## Verilog Code: `sqrt.v`
+
+```verilog
+module sqrt (
+    input wire clk,
+    input wire rst,
+    input wire start,
+    input wire [21:0] in,      // 22-bit input (enough for your gradient magnitude range)
+    output reg [10:0] out,     // 11-bit output (max sqrt of 22-bit number)
+    output reg done
+);
+
+    reg [21:0] remainder;
+    reg [10:0] root;
+    reg [5:0] bit_pos;          // counter from 10 down to 0
+    reg running;
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            remainder <= 0;
+            root <= 0;
+            bit_pos <= 10;
+            done <= 0;
+            running <= 0;
+            out <= 0;
+        end else if (start && !running) begin
+            // Initialize for new sqrt calculation
+            remainder <= in;
+            root <= 0;
+            bit_pos <= 10;
+            done <= 0;
+            running <= 1;
+        end else if (running) begin
+            if (bit_pos == 6'd0) begin
+                done <= 1;
+                out <= root;
+                running <= 0;
+            end else begin
+                // Shift root left and test if subtract possible
+                root <= root << 1;
+                if (remainder >= ((root << 1) + 1) << (bit_pos - 1)) begin
+                    remainder <= remainder - (((root << 1) + 1) << (bit_pos - 1));
+                    root <= root + 1;
+                end
+                bit_pos <= bit_pos - 1;
+            end
+        end else begin
+            done <= 0;
+        end
+    end
+
+endmodule
+
+```
+
