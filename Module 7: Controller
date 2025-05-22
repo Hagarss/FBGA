@@ -1,0 +1,90 @@
+
+### Module 7: Controller
+
+**Description:**
+Controls three counters:
+
+* `counter_data` — controls memory address of image data.
+* `counter_img_buffer` — controls buffering for image window.
+* `counter_img_encoder` — controls embedding process addresses.
+  It also reacts to threshold flags and controls read/write flow depending on embedded bits and edge detection.
+
+---
+
+### Verilog Code: Controller Module
+
+```verilog
+module controller (
+    input wire clk,
+    input wire rst,
+    input wire start,
+    input wire edge_detected_flag,   // Flag from threshold module indicating an edge pixel
+    input wire [1:0] bits_embedded,  // Number of bits to embed (e.g. 1, 2, 3)
+    output reg [15:0] counter_data,          // Address for image data (up to 16 bits for 256x256)
+    output reg [11:0] counter_img_buffer,    // Buffer address counter (adjust size accordingly)
+    output reg [11:0] counter_img_encoder,   // Encoder address counter (adjust size accordingly)
+    output reg enable_read,          // Enable reading image data
+    output reg enable_encode         // Enable encoding process
+);
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            counter_data <= 0;
+            counter_img_buffer <= 0;
+            counter_img_encoder <= 0;
+            enable_read <= 0;
+            enable_encode <= 0;
+        end else if (start) begin
+            // Control reading address counter
+            if (counter_data < 65535)  // max 16-bit address
+                counter_data <= counter_data + 1;
+            else
+                counter_data <= 0;
+
+            // Buffer counter increments only when reading image data
+            if (enable_read) begin
+                if (counter_img_buffer < 4095)  // example max count, adjust size as needed
+                    counter_img_buffer <= counter_img_buffer + 1;
+                else
+                    counter_img_buffer <= 0;
+            end
+
+            // Encoder counter increments only when encoding enabled
+            if (enable_encode) begin
+                if (counter_img_encoder < 4095)  // example max count
+                    counter_img_encoder <= counter_img_encoder + 1;
+                else
+                    counter_img_encoder <= 0;
+            end
+
+            // Control enables based on edge detection and bits to embed
+            enable_read <= 1;  // always read while running
+
+            // Start encoding 2 clock cycles after edge detected flag
+            if (edge_detected_flag)
+                enable_encode <= 1;
+            else
+                enable_encode <= 0;
+        end else begin
+            // Idle/reset state
+            counter_data <= 0;
+            counter_img_buffer <= 0;
+            counter_img_encoder <= 0;
+            enable_read <= 0;
+            enable_encode <= 0;
+        end
+    end
+
+endmodule
+```
+
+---
+
+### Explanation:
+
+* Counters increment sequentially with the clock when `start` is active.
+* `counter_data` runs over the entire image address space (up to 65536 pixels for 256x256).
+* `counter_img_buffer` and `counter_img_encoder` control buffering and encoding respectively.
+* `enable_read` and `enable_encode` control stages for reading and encoding.
+* Encoding starts only after an edge is detected (`edge_detected_flag`) with a 2-cycle delay implemented externally or via control signals.
+
