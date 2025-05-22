@@ -1,0 +1,93 @@
+### Module 10: Writing Stego Out Back
+
+**Description:**
+This module is responsible for writing the stego image output back to memory and calculating the quality metrics between the original message and the extracted message. It computes the Peak Signal-to-Noise Ratio (PSNR) and a difference matrix to evaluate the embedding performance and image fidelity after steganography.
+
+---
+
+### Verilog Code: Writing Stego Out Back Module
+
+```verilog
+module stego_writer_and_quality (
+    input wire clk,
+    input wire rst,
+    input wire start,
+    input wire [23:0] stego_pixel_in,       // Stego pixel to be written out
+    input wire [23:0] cover_pixel_in,       // Original cover pixel (for PSNR calculation)
+    input wire [8:0] extracted_message_bits,// Extracted message bits (for difference calculation)
+    input wire [8:0] original_message_bits, // Original message bits (for difference calculation)
+    output reg [23:0] stego_pixel_out,      // Output stego pixel to memory
+    output reg done,
+    output reg [31:0] psnr,                  // Computed PSNR value (simplified representation)
+    output reg [15:0] difference             // Difference metric between extracted and original message bits
+);
+
+    reg [31:0] mse_accumulator;
+    reg [15:0] pixel_difference;
+    reg [31:0] pixel_count;
+
+    // Simple absolute difference function
+    function [15:0] abs_diff;
+        input [8:0] a, b;
+        begin
+            if (a > b)
+                abs_diff = a - b;
+            else
+                abs_diff = b - a;
+        end
+    endfunction
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            stego_pixel_out <= 24'd0;
+            done <= 0;
+            mse_accumulator <= 32'd0;
+            pixel_count <= 32'd0;
+            psnr <= 32'd0;
+            difference <= 16'd0;
+        end else if (start) begin
+            // Write stego pixel out
+            stego_pixel_out <= stego_pixel_in;
+
+            // Calculate difference between extracted and original message bits
+            pixel_difference <= abs_diff(extracted_message_bits, original_message_bits);
+            difference <= pixel_difference;
+
+            // Calculate Mean Squared Error (MSE) for PSNR (simplified for demonstration)
+            // MSE += (cover_pixel - stego_pixel)^2 per color channel
+            mse_accumulator <= mse_accumulator + 
+                ((cover_pixel_in[23:16] - stego_pixel_in[23:16]) * (cover_pixel_in[23:16] - stego_pixel_in[23:16])) +
+                ((cover_pixel_in[15:8] - stego_pixel_in[15:8]) * (cover_pixel_in[15:8] - stego_pixel_in[15:8])) +
+                ((cover_pixel_in[7:0] - stego_pixel_in[7:0]) * (cover_pixel_in[7:0] - stego_pixel_in[7:0]));
+
+            pixel_count <= pixel_count + 1;
+
+            // After processing all pixels, compute PSNR (pseudo formula here)
+            // PSNR = 10 * log10(MAX_I^2 / MSE), MAX_I=255 for 8-bit channels
+            if (pixel_count == /* total_pixels */ 65536) begin  // for 256*256 image
+                if (mse_accumulator != 0)
+                    psnr <= 10 * $clog2((255*255 * pixel_count) / mse_accumulator); // Simplified log2 for example
+                else
+                    psnr <= 32'd100; // Very high PSNR for zero error
+                done <= 1;
+            end else begin
+                done <= 0;
+            end
+        end else begin
+            done <= 0;
+        end
+    end
+
+endmodule
+```
+
+---
+
+### Notes:
+
+* This is a simplified version for hardware implementation; exact PSNR calculation with log function usually needs fixed-point math or external software.
+* `pixel_count` should be set according to your image size (e.g., 256\*256 = 65536).
+* The difference output shows the absolute difference between extracted and original message bits, useful for error detection.
+* You might want to implement or interface this module with memory to store the stego pixels.
+
+---
