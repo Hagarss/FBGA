@@ -1,0 +1,53 @@
+### Module 4: Kernel (Sobel Edge Detector)
+
+### Description
+
+This module performs the **Sobel edge detection** by convolving the 3×3 pixel window with the Sobel masks to calculate gradient components `Gx` and `Gy`:
+
+* `Gx` detects horizontal edges
+* `Gy` detects vertical edges
+
+The 3×3 input window pixels are multiplied by the Sobel kernel masks, summed to produce `Gx` and `Gy`.
+
+### ⚙️ Function
+
+* **Inputs**:
+
+  * `window`: 3×3 pixel window (9 pixels, 8-bit each)
+* **Outputs**:
+
+  * `Gx`: Gradient in the x-direction (signed integer)
+  * `Gy`: Gradient in the y-direction (signed integer)
+
+---
+
+## Verilog Code: `kernel.v`
+
+```verilog
+module kernel (
+    input wire signed [7:0] window [0:8],  // 3x3 window pixels, signed for subtraction
+    output reg signed [10:0] Gx,  // Gradient X (can be larger due to sums)
+    output reg signed [10:0] Gy   // Gradient Y
+);
+
+    always @(*) begin
+        // Sobel kernels:
+        // Gx mask:  [-1  0  +1
+        //            -2  0  +2
+        //            -1  0  +1]
+
+        // Gy mask:  [+1 +2 +1
+        //             0  0  0
+        //            -1 -2 -1]
+
+        Gx = -window[0] + window[2]
+             - (window[3] <<< 1) + (window[5] <<< 1)  // Multiply by 2 with shift left
+             - window[6] + window[8];
+
+        Gy = window[0] + (window[1] <<< 1) + window[2]
+             - window[6] - (window[7] <<< 1) - window[8];
+    end
+
+endmodule
+```
+
