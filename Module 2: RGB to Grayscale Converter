@@ -1,0 +1,45 @@
+
+### Module 2: RGB to Grayscale Converter
+
+This module converts RGB pixel data (24 bits: 8 bits per channel) into grayscale to simplify edge detection, which is computationally more efficient on single-channel data.
+
+* **Input:** 24-bit RGB pixel from BRAM
+  → `{R[7:0], G[7:0], B[7:0]}`
+* **Output:** 8-bit grayscale pixel
+
+#### Conversion Logic
+
+A simple average method is used for converting to grayscale:
+
+$$
+\text{Gray} = \frac{R + G + B}{3}
+$$
+
+This value is passed to the **Buffer** module for window formation.
+
+####  Verilog Snippet
+
+```verilog
+module rgb_to_gray (
+    input wire clk,
+    input wire rst,
+    input wire [7:0] R,
+    input wire [7:0] G,
+    input wire [7:0] B,
+    output reg [7:0] gray
+);
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            gray <= 8'b0;
+        end else begin
+            // Integer division by 3 with rounding
+            gray <= (R + G + B + 1) / 3;
+        end
+    end
+
+endmodule
+```
+
+---
+
