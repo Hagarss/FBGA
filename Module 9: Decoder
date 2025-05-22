@@ -1,0 +1,82 @@
+### Module 9: Decoder
+
+**Description:**
+The decoder module extracts the hidden message bits from the stego image pixels. It uses the embedding bit-length information (number of bits per pixel embedded) to correctly retrieve the message bits from the least significant bits of each pixel’s RGB channels. The decoder operation depends on the encoding flag and processes pixels sequentially to recover the original secret message.
+
+---
+
+### Verilog Code: Decoder Module
+
+```verilog
+module decoder (
+    input wire clk,
+    input wire rst,
+    input wire start_decode,           // Starts decoding process
+    input wire [1:0] bits_embedded,    // Number of bits embedded: 1, 2, or 3 bits per channel
+    input wire [23:0] stego_pixel_in,  // Input stego pixel (RGB)
+    output reg [8:0] message_bits_out, // Output extracted message bits (up to 9 bits)
+    output reg done                    // Indicates extraction done for current pixel
+);
+
+    reg [8:0] extracted_bits;
+    reg [1:0] decode_mode;
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            message_bits_out <= 9'd0;
+            done <= 0;
+            decode_mode <= 2'b00;
+        end else if (start_decode) begin
+            decode_mode <= bits_embedded;
+            done <= 0;
+
+            case (decode_mode)
+                2'b01: begin
+                    // Extract 1 bit per channel (3 bits total)
+                    extracted_bits[2] <= stego_pixel_in[20];  // R LSB
+                    extracted_bits[1] <= stego_pixel_in[16];  // G LSB
+                    extracted_bits[0] <= stego_pixel_in[7];   // B LSB
+                    message_bits_out <= extracted_bits;
+                    done <= 1;
+                end
+
+                2'b10: begin
+                    // Extract 2 bits per channel (6 bits total)
+                    extracted_bits[5:4] <= stego_pixel_in[21:20]; // R LSBs
+                    extracted_bits[3:2] <= stego_pixel_in[17:16]; // G LSBs
+                    extracted_bits[1:0] <= stego_pixel_in[7:6];   // B LSBs
+                    message_bits_out <= extracted_bits;
+                    done <= 1;
+                end
+
+                2'b11: begin
+                    // Extract 3 bits per channel (9 bits total)
+                    extracted_bits[8:6] <= stego_pixel_in[23:21]; // R LSBs
+                    extracted_bits[5:3] <= stego_pixel_in[20:18]; // G LSBs
+                    extracted_bits[2:0] <= stego_pixel_in[17:15]; // B LSBs
+                    message_bits_out <= extracted_bits;
+                    done <= 1;
+                end
+
+                default: begin
+                    message_bits_out <= 9'd0;
+                    done <= 1;
+                end
+            endcase
+        end else begin
+            done <= 0;
+        end
+    end
+
+endmodule
+```
+
+---
+
+### Notes:
+
+* This decoder mirrors the encoder’s embedding scheme to extract the correct bits.
+* The `message_bits_out` width is up to 9 bits to cover the maximum bits embedded.
+* The `done` signal indicates completion for current pixel extraction.
+
+---
