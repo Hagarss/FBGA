@@ -1,0 +1,89 @@
+
+### Module: Buffer
+
+### Description
+
+This module acts as a **delay line shift register** to create a window for kernel convolution. It enables smooth and efficient edge detection by preparing the surrounding pixel values for the **Sobel filter**. This avoids multiple memory accesses for the same pixel.
+
+* The buffer operates on grayscale pixels (8-bit)
+* For a 3×3 kernel, the buffer stores **3 rows**, and slides column-by-column
+* Once the 3×3 window is ready, it asserts a `window_ready` flag
+
+### Function
+
+* **Inputs**:
+
+  * `clk`: Clock signal
+  * `reset`: Reset signal
+  * `pixel_in`: 8-bit grayscale input pixel
+  * `enable`: Controls shifting process
+* **Outputs**:
+
+  * `window`: 3×3 output window (9 pixels, 8 bits each)
+  * `window_ready`: Flag indicating that the window is fully prepared
+
+---
+
+## Verilog Code: `buffer.v`
+
+```verilog
+module buffer (
+    input wire clk,
+    input wire reset,
+    input wire enable,
+    input wire [7:0] pixel_in,
+    output reg [7:0] window [0:8],  // 3x3 window (flattened)
+    output reg window_ready
+);
+
+    // Parameters
+    parameter IMG_WIDTH = 256;
+
+    // Internal shift registers for 3 rows
+    reg [7:0] line1 [0:IMG_WIDTH-1];
+    reg [7:0] line2 [0:IMG_WIDTH-1];
+
+    // Column index for writing/reading
+    integer col;
+
+    // Index for current column being processed
+    reg [15:0] pixel_count;
+
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            pixel_count <= 0;
+            window_ready <= 0;
+        end else if (enable) begin
+            // Update lines
+            line1[pixel_count] <= line2[pixel_count];
+            line2[pixel_count] <= pixel_in;
+
+            // Assign values to the 3x3 window when possible
+            if (pixel_count >= 1 && pixel_count < IMG_WIDTH - 1) begin
+                window[0] <= line1[pixel_count - 1];
+                window[1] <= line1[pixel_count];
+                window[2] <= line1[pixel_count + 1];
+
+                window[3] <= line2[pixel_count - 1];
+                window[4] <= line2[pixel_count];
+                window[5] <= line2[pixel_count + 1];
+
+                window[6] <= pixel_in;  // current pixel
+                // simulate next row with delay
+                window[7] <= 8'b0;
+                window[8] <= 8'b0;
+
+                window_ready <= 1'b1;
+            end else begin
+                window_ready <= 1'b0;
+            end
+
+            // Increment pixel counter
+            if (pixel_count == IMG_WIDTH - 1)
+                pixel_count <= 0;
+            else
+                pixel_count <= pixel_count + 1;
+        end
+    end
+endmodule
+```
